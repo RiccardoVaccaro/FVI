@@ -36,7 +36,7 @@
 </head>
 <body>
 <iframe id="app" title="FALCO VI" allow="clipboard-write"
-  src="https://script.google.com/macros/s/AKfycbziDWnx8Rekwzi4KgkcjxNgx0-cVIz3Gn3rUiRtYdrDpbJuPhVd4oiSzpHqXSVy4bMUbg/exec"></iframe>
+  data-src="https://script.google.com/macros/s/AKfycbziDWnx8Rekwzi4KgkcjxNgx0-cVIz3Gn3rUiRtYdrDpbJuPhVd4oiSzpHqXSVy4bMUbg/exec"></iframe>
 <div id="avvio"><img src="icons/icon-192.png" alt=""><b>FALCO VI</b><span>Caricamento…</span></div>
 <div id="push"><span>Vuoi ricevere promemoria, turni di domani, scambi e file pronti?</span><button id="pushNo">Dopo</button><button id="pushSi">Attiva</button></div>
 <div id="offline">Sei offline: l'app si aggiorna appena torna la connessione.</div>
@@ -47,7 +47,7 @@
   app.addEventListener('load', function () { avvio.classList.add('via'); });
   setTimeout(function () { avvio.classList.add('via'); }, 8000);
   function rete() { document.getElementById('offline').style.display = navigator.onLine ? 'none' : 'block'; }
-  window.addEventListener('online', function () { rete(); app.src = app.src; });
+  window.addEventListener('online', function () { rete(); app.src = app.getAttribute('data-src'); });
   window.addEventListener('offline', rete);
 
   /* ---------- notifiche push (Firebase Cloud Messaging) ---------- */
@@ -114,6 +114,8 @@
     if (d.falco === 'cancella-token') { try { localStorage.removeItem('falcoToken'); } catch (x) {} }
     if (d.falco === 'attiva' && stato() === 'da-attivare') { try { localStorage.removeItem('pushDopo'); } catch (x) {} mostraBanner(); }
   });
+  // L'app si carica solo ora, quando la pagina è pronta a rispondere (accesso salvato, notifiche).
+  app.src = app.getAttribute('data-src');
 </script>
 </body>
 </html>
