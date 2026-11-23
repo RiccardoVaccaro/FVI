@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>FALCO VI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#C8341F">
+<meta name="description" content="Presenze, LU e pernotti del corso FALCO VI">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FALCO VI">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  html, body { margin: 0; height: 100%; background: #C8341F; overflow: hidden; }
+  body { padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+  #app { display: block; width: 100%; height: 100%; border: 0; background: #FBF0EE; }
+  #avvio { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; background: #FBF0EE; color: #5b6475; font: 15px Inter, system-ui, -apple-system, sans-serif; transition: opacity .3s; }
+  #avvio img { width: 120px; height: 120px; }
+  #avvio b { font-size: 22px; color: #141a26; letter-spacing: .04em; }
+  #avvio.via { opacity: 0; pointer-events: none; }
+  #offline { display: none; position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #141a26; color: #fff;
+    padding: 10px 16px; border-radius: 10px; font: 14px system-ui, sans-serif; z-index: 5; }
+</style>
+</head>
+<body>
+<iframe id="app" title="FALCO VI" allow="clipboard-write"
+  src="https://script.google.com/macros/s/AKfycbziDWnx8Rekwzi4KgkcjxNgx0-cVIz3Gn3rUiRtYdrDpbJuPhVd4oiSzpHqXSVy4bMUbg/exec"></iframe>
+<div id="avvio"><img src="icons/icon-192.png" alt=""><b>FALCO VI</b><span>Caricamento…</span></div>
+<div id="offline">Sei offline: l'app si aggiorna appena torna la connessione.</div>
+<script>
+  var app = document.getElementById('app'), avvio = document.getElementById('avvio');
+  app.addEventListener('load', function () { avvio.classList.add('via'); });
+  setTimeout(function () { avvio.classList.add('via'); }, 8000);
+  function rete() { document.getElementById('offline').style.display = navigator.onLine ? 'none' : 'block'; }
+  window.addEventListener('online', function () { rete(); app.src = app.src; });
+  window.addEventListener('offline', rete);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
