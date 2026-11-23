@@ -108,6 +108,10 @@
       if (stato() === 'attive') prendiToken();
       else if (stato() === 'da-attivare') mostraBanner();
     }
+    // Accesso salvato nella pagina principale (la memoria dell'iframe può essere cancellata dal telefono).
+    if (d.falco === 'chiedi-token') { var t = ''; try { t = localStorage.getItem('falcoToken') || ''; } catch (x) {} invia({falco: 'token', token: t}); }
+    if (d.falco === 'salva-token' && d.token) { try { localStorage.setItem('falcoToken', String(d.token)); } catch (x) {} }
+    if (d.falco === 'cancella-token') { try { localStorage.removeItem('falcoToken'); } catch (x) {} }
     if (d.falco === 'attiva' && stato() === 'da-attivare') { try { localStorage.removeItem('pushDopo'); } catch (x) {} mostraBanner(); }
   });
 </script>
