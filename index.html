@@ -23,6 +23,13 @@
   #avvio img { width: 120px; height: 120px; }
   #avvio b { font-size: 22px; color: #141a26; letter-spacing: .04em; }
   #avvio.via { opacity: 0; pointer-events: none; }
+  #push { display: none; position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 6;
+    background: #141a26; color: #fff; border-radius: 14px; padding: 12px 14px; font: 14px Inter, system-ui, sans-serif;
+    align-items: center; gap: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+  #push span { flex: 1; line-height: 1.35; }
+  #push button { border: 0; border-radius: 10px; padding: 10px 14px; font: 600 14px system-ui, sans-serif; }
+  #pushSi { background: #C8341F; color: #fff; }
+  #pushNo { background: transparent; color: #cfd5df; }
   #offline { display: none; position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #141a26; color: #fff;
     padding: 10px 16px; border-radius: 10px; font: 14px system-ui, sans-serif; z-index: 5; }
 </style>
@@ -31,7 +38,10 @@
 <iframe id="app" title="FALCO VI" allow="clipboard-write"
   src="https://script.google.com/macros/s/AKfycbziDWnx8Rekwzi4KgkcjxNgx0-cVIz3Gn3rUiRtYdrDpbJuPhVd4oiSzpHqXSVy4bMUbg/exec"></iframe>
 <div id="avvio"><img src="icons/icon-192.png" alt=""><b>FALCO VI</b><span>Caricamento…</span></div>
+<div id="push"><span>Vuoi ricevere promemoria, turni di domani, scambi e file pronti?</span><button id="pushNo">Dopo</button><button id="pushSi">Attiva</button></div>
 <div id="offline">Sei offline: l'app si aggiorna appena torna la connessione.</div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
 <script>
   var app = document.getElementById('app'), avvio = document.getElementById('avvio');
   app.addEventListener('load', function () { avvio.classList.add('via'); });
@@ -39,7 +49,67 @@
   function rete() { document.getElementById('offline').style.display = navigator.onLine ? 'none' : 'block'; }
   window.addEventListener('online', function () { rete(); app.src = app.src; });
   window.addEventListener('offline', rete);
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+
+  /* ---------- notifiche push (Firebase Cloud Messaging) ---------- */
+  var FIREBASE = {
+    apiKey: 'AIzaSyD1dj_0myugLL1_1OZ0sR00kQS_RclAXsw',
+    authDomain: 'falco-vi.firebaseapp.com',
+    projectId: 'falco-vi',
+    storageBucket: 'falco-vi.firebasestorage.app',
+    messagingSenderId: '374942422043',
+    appId: '1:374942422043:web:d431ea7104796c3f92d4be'
+  };
+  var VAPID = 'BIdBMPzDWZc8ItIDyU_FMREjGnQ2ZVPpj6vpbFB3nCcTy-NHeOxORynPETN0b52o-YRKKDTZRyI0YtidfktJ2yg';
+  var swReg = null, appWin = null, messaging = null;
+  var swPronto = 'serviceWorker' in navigator ? navigator.serviceWorker.register('sw.js').then(function (r) { swReg = r; return navigator.serviceWorker.ready; }) : Promise.reject();
+  var supportate = false;
+  try {
+    supportate = 'Notification' in window && 'PushManager' in window && 'serviceWorker' in navigator && firebase.messaging.isSupported();
+    if (supportate) {
+      firebase.initializeApp(FIREBASE);
+      messaging = firebase.messaging();
+      // Con l'app aperta la notifica non compare da sola: la mostriamo noi.
+      messaging.onMessage(function (p) {
+        var d = p.data || {};
+        if (swReg) swReg.showNotification(d.titolo || 'FALCO VI', {body: d.testo || '', icon: 'icons/icon-192.png', badge: 'icons/favicon-32.png', data: {link: d.link || ''}});
+      });
+    }
+  } catch (e) { supportate = false; }
+
+  function invia(msg) { if (appWin) appWin.postMessage(msg, '*'); }
+  function stato() {
+    if (!supportate) return 'non-supportate';
+    return Notification.permission === 'granted' ? 'attive' : Notification.permission === 'denied' ? 'negate' : 'da-attivare';
+  }
+  function dispositivo() { return (navigator.userAgent.match(/\(([^)]+)\)/) || ['', ''])[1].slice(0, 100); }
+  function prendiToken() {
+    return swPronto.then(function () {
+      return messaging.getToken({vapidKey: VAPID, serviceWorkerRegistration: swReg});
+    }).then(function (t) { if (t) invia({falco: 'fcm', token: t, dispositivo: dispositivo()}); invia({falco: 'push-stato', stato: stato()}); })
+      .catch(function () { invia({falco: 'push-stato', stato: stato()}); });
+  }
+  var banner = document.getElementById('push');
+  function mostraBanner() {
+    try { if (localStorage.getItem('pushDopo') && Date.now() - Number(localStorage.getItem('pushDopo')) < 3 * 864e5) return; } catch (e) {}
+    banner.style.display = 'flex';
+  }
+  document.getElementById('pushNo').onclick = function () { banner.style.display = 'none'; try { localStorage.setItem('pushDopo', String(Date.now())); } catch (e) {} };
+  document.getElementById('pushSi').onclick = function () {
+    banner.style.display = 'none';
+    Notification.requestPermission().then(function (p) { if (p === 'granted') prendiToken(); else invia({falco: 'push-stato', stato: stato()}); });
+  };
+  // Messaggi dall'app (pagina Apps Script dentro l'iframe).
+  window.addEventListener('message', function (e) {
+    var d = e.data || {};
+    if (!d.falco || !/\.googleusercontent\.com$/.test(e.origin)) return;
+    appWin = e.source;
+    if (d.falco === 'pronto') {
+      invia({falco: 'push-stato', stato: stato()});
+      if (stato() === 'attive') prendiToken();
+      else if (stato() === 'da-attivare') mostraBanner();
+    }
+    if (d.falco === 'attiva' && stato() === 'da-attivare') { try { localStorage.removeItem('pushDopo'); } catch (x) {} mostraBanner(); }
+  });
 </script>
 </body>
 </html>
