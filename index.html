@@ -98,6 +98,22 @@
     banner.style.display = 'none';
     Notification.requestPermission().then(function (p) { if (p === 'granted') prendiToken(); else invia({falco: 'push-stato', stato: stato()}); });
   };
+  /* ---------- accesso salvato: memoria del sito + cookie (se uno dei due viene cancellato resta l'altro) ---------- */
+  function memoriaOk() { try { localStorage.setItem('falcoProva', '1'); var ok = localStorage.getItem('falcoProva') === '1'; localStorage.removeItem('falcoProva'); return ok; } catch (e) { return false; } }
+  function installata() { try { return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } }
+  function leggiCookie() { var m = document.cookie.match(/(?:^|;\s*)falcoToken=([^;]*)/); return m ? decodeURIComponent(m[1]) : ''; }
+  function leggiToken() {
+    var t = ''; try { t = localStorage.getItem('falcoToken') || ''; } catch (e) {}
+    var c = leggiCookie();
+    if (!t && c) { t = c; try { localStorage.setItem('falcoToken', c); } catch (e) {} }
+    if (t && !c) scriviCookie(t);
+    return t;
+  }
+  function scriviCookie(t) { document.cookie = 'falcoToken=' + encodeURIComponent(t) + ';path=/FVI;max-age=' + (t ? 34560000 : 0) + ';secure;samesite=strict'; }
+  function scriviToken(t) { try { if (t) localStorage.setItem('falcoToken', t); else localStorage.removeItem('falcoToken'); } catch (e) {} scriviCookie(t); }
+  // Chiede al telefono di non cancellare i dati dell'app (Android/Chrome; su iPhone conta l'app sulla schermata Home).
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
   // Messaggi dall'app (pagina Apps Script dentro l'iframe).
   window.addEventListener('message', function (e) {
     var d = e.data || {};
@@ -109,9 +125,9 @@
       else if (stato() === 'da-attivare') mostraBanner();
     }
     // Accesso salvato nella pagina principale (la memoria dell'iframe può essere cancellata dal telefono).
-    if (d.falco === 'chiedi-token') { var t = ''; try { t = localStorage.getItem('falcoToken') || ''; } catch (x) {} invia({falco: 'token', token: t}); }
-    if (d.falco === 'salva-token' && d.token) { try { localStorage.setItem('falcoToken', String(d.token)); } catch (x) {} }
-    if (d.falco === 'cancella-token') { try { localStorage.removeItem('falcoToken'); } catch (x) {} }
+    if (d.falco === 'chiedi-token') invia({falco: 'token', token: leggiToken(), memoria: memoriaOk(), installata: installata()});
+    if (d.falco === 'salva-token' && d.token) scriviToken(String(d.token));
+    if (d.falco === 'cancella-token') scriviToken('');
     if (d.falco === 'attiva' && stato() === 'da-attivare') { try { localStorage.removeItem('pushDopo'); } catch (x) {} mostraBanner(); }
   });
   // L'app si carica solo ora, quando la pagina è pronta a rispondere (accesso salvato, notifiche).
